@@ -9,23 +9,24 @@ static unsigned long long antidiagonalMask[64];
 static unsigned long long knightMask[64];
 static unsigned long long pawnCaptureMask[2][64];
 static unsigned long long kingMask[64];
+static unsigned long long zeroMask[64];
 static bool initialized = false;
 BitBoard::BitBoard() {
     //initialize starting pos
     BitBoard::color[0] = 0x000000000000ffff;
     BitBoard::color[1] = 0xffff000000000000;
-    BitBoard::pawn[0] = 0x000000000000ff00;
-    BitBoard::pawn[1] = 0x00ff000000000000;
-    BitBoard::knight[0] = 0x0000000000000042;
-    BitBoard::knight[1] = 0x4200000000000000;
-    BitBoard::bishop[0] = 0x0000000000000024;
-    BitBoard::bishop[1] = 0x2400000000000000;
-    BitBoard::rook[0] = 0x0000000000000081;
-    BitBoard::rook[1] = 0x8100000000000000;
-    BitBoard::queen[0] = 0x0000000000000008;
-    BitBoard::queen[1] = 0x0800000000000000;
-    BitBoard::king[0] = 0x0000000000000010;
-    BitBoard::king[1] = 0x1000000000000000;
+    BitBoard::pieces[0][0] = 0x000000000000ff00;
+    BitBoard::pieces[0][1] = 0x00ff000000000000;
+    BitBoard::pieces[2][0] = 0x0000000000000042;
+    BitBoard::pieces[2][1] = 0x4200000000000000;
+    BitBoard::pieces[3][0] = 0x0000000000000024;
+    BitBoard::pieces[3][1] = 0x2400000000000000;
+    BitBoard::pieces[1][0] = 0x0000000000000081;
+    BitBoard::pieces[1][1] = 0x8100000000000000;
+    BitBoard::pieces[4][0] = 0x0000000000000008;
+    BitBoard::pieces[4][1] = 0x0800000000000000;
+    BitBoard::pieces[5][0] = 0x0000000000000010;
+    BitBoard::pieces[5][1] = 0x1000000000000000;
 
     //generate masks just once for all bitboards:
     if (!(initialized)) {
@@ -175,6 +176,14 @@ BitBoard::BitBoard() {
             }
             knightMask[i] = kmask;
             
+
+            //Zero mask: used for pawn pushes,
+            //all bits of n or greater significance are 0, all others are 1
+            unsigned long long zMask = 0xffffffffffffffff;
+            for (int i = 63; i >= 0; i--) {
+                zMask ^= singleMask[i];
+                zeroMask[i] = zMask;
+            }
         }
 
         //Pawn captures:
@@ -251,112 +260,30 @@ BitBoard::BitBoard(BitBoard &copy) {
     initialized = true;
     BitBoard::color[0] = copy.color[0];
     BitBoard::color[1] = copy.color[1];
-    BitBoard::pawn[0] = copy.pawn[0];
-    BitBoard::pawn[1] = copy.pawn[1];
-    BitBoard::knight[0] = copy.knight[0];
-    BitBoard::knight[1] = copy.knight[1];
-    BitBoard::bishop[0] = copy.bishop[0];
-    BitBoard::bishop[1] = copy.bishop[1];
-    BitBoard::rook[0] = copy.rook[0];
-    BitBoard::rook[1] = copy.rook[1];
-    BitBoard::queen[0] = copy.queen[0];
-    BitBoard::queen[1] = copy.queen[1];
-    BitBoard::king[0] = copy.king[0];
-    BitBoard::king[1] = copy.king[1];
+    BitBoard::pieces[0][0] = copy.pieces[0][0];
+    BitBoard::pieces[0][1] = copy.pieces[0][1];
+    BitBoard::pieces[2][0] = copy.pieces[2][0];
+    BitBoard::pieces[2][1] = copy.pieces[0][1];
+    BitBoard::pieces[3][0] = copy.pieces[3][0];
+    BitBoard::pieces[3][1] = copy.pieces[3][1];
+    BitBoard::pieces[1][0] = copy.pieces[1][0];
+    BitBoard::pieces[1][1] = copy.pieces[1][1];
+    BitBoard::pieces[4][0] = copy.pieces[4][0];
+    BitBoard::pieces[4][1] = copy.pieces[4][1];
+    BitBoard::pieces[5][0] = copy.pieces[5][0];
+    BitBoard::pieces[5][1] = copy.pieces[5][1];
 
 }
 
 BitBoard** BitBoard::getLegalBoards(int color) {
-    //Returns an array of pointers to all legal child bitboards of the
-    //current position.
-
-    //Loop through each piece type of side to move
     
-    unsigned long long occupied = BitBoard::color[0] | BitBoard::color[1];
-    unsigned long long rev_occupied = byteswap(occupied);
-    unsigned long long slider, rev_slider;
-    int oppositeColor = !((bool)(color));
-    unsigned long long tempPiece;
-    unsigned long long tempColor = BitBoard::color[color];
-    unsigned long long tempOppCol, tempOppKnight, tempOppPawn, tempOppQueen, tempOppKing, 
-    tempOppRook, tempOppBishop;
-    //Dupicate pawn here because pawns have to be evaluated twice for pushes and attacks
-    unsigned long long pieces[7] = 
-    {BitBoard::pawn[color], BitBoard::pawn[color], 
-    BitBoard::knight[color], 
-    BitBoard::rook[color], BitBoard::queen[color], 
-    BitBoard::bishop[color], BitBoard::king[color]};
-
-    unsigned long long (BitBoard::*pieceAttacks[7])(unsigned long long, unsigned long long, int, int);
-    pieceAttacks[0] = &BitBoard::pawnCaptures;
-    pieceAttacks[1] = &BitBoard::pawnPushes;
-    pieceAttacks[2] = &BitBoard::knightMoves;
-    pieceAttacks[3] = &BitBoard::rookMoves;
-    pieceAttacks[4] = &BitBoard::queenMoves;
-    pieceAttacks[5] = &BitBoard::bishopMoves;
-    pieceAttacks[6] = &BitBoard::kingMoves;
-
-    //For each piece type:
-    for (int i = 0; i < 6; i++) {
-        
-        //For each existent piece of that type on the board:
-        for (int j = BitBoard::getNumPieces(tempPiece); j > 0; j--) {
-            //Create temp vars for anything that can change during the move
-            //This includes the long for the piece moving, the set of all pieces of the side to move,
-            //And any enemy pieces which can be captured.
-            //These longs will then be used to initialize the new "child" bitboard.
-            tempPiece = pieces[i];
-            tempColor = BitBoard::color[color];
-            tempOppCol = BitBoard::color[oppositeColor];
-            tempOppPawn = BitBoard::pawn[oppositeColor];
-            tempOppRook = BitBoard::rook[oppositeColor];
-            tempOppKnight = BitBoard::knight[oppositeColor];
-            tempOppBishop = BitBoard::bishop[oppositeColor];
-            tempOppQueen = BitBoard::queen[oppositeColor];
-            tempOppKing = BitBoard::king[oppositeColor];
-            int square = BitBoard::getLowestSquare(tempPiece);
-
-            unsigned long long attack = (*this.*pieceAttacks[i])(occupied, rev_occupied, square, color);
-            //we now want to make new boards for each possible attack of the piece
-            int destSquare = BitBoard::getLowestSquare(attack);
-            tempPiece ^= singleMask[destSquare];
-            tempPiece ^= singleMask[square];
-            //tempPiece now stores the new value of the moved piece
-
-            tempColor ^= singleMask[destSquare];
-            tempColor ^= singleMask[square];
-
-            //in the event of a capture, we must remove the relevant bits from the opposite color
-            //Bitwise AND with set of occupied squares of side to move and all other fields with 
-            //opposite side gives the sets of squares with multiple values
-            //We then subtract these out.
-            tempOppCol -= (tempOppCol & tempColor);
-            tempOppPawn -=(tempOppPawn & tempColor);
-            tempOppRook -=(tempOppRook & tempColor);
-            tempOppKnight -=(tempOppKnight & tempColor);
-            tempOppBishop -=(tempOppBishop & tempColor);
-            tempOppQueen -=(tempOppQueen & tempColor);
-            tempOppKing -=(tempOppKing & tempColor);
-            
-            BitBoard child (*this);
-            child.color[color] = tempColor;
-            
-        }
-    }
-    
-    
-
     
     
 
 
 
 
-    //temporary code, does nothing
-    BitBoard s(*this);
-    BitBoard *ret[1];
-    ret[0] = &s;
-    return ret;
+    
 }
 
 unsigned long long BitBoard::byteswap(unsigned long long in) {
@@ -471,19 +398,19 @@ unsigned long long BitBoard::pawnPushes(unsigned long long occ,
         unsigned long long rev_occ, int square, int color) {
     //pawn movement in general is the union of pushes and captures
     //pushes are either by two squares or one, so we calculate both possibilities
-    unsigned long long empty_squares = ~(BitBoard::color[0] | BitBoard::color[1]);
+    unsigned long long empty_squares = ~(occ);
     unsigned long long singlepushes;
     unsigned long long doublepushes;
     if (color == 0) { //white
         //empty squares immediately ahead of the pawn
-        singlepushes = (BitBoard::pawn[0] << 8) & empty_squares; 
+        singlepushes = (BitBoard::pieces[0][0] << 8) & empty_squares; 
         //double pushes:
         const unsigned long long rank4 = 0x00000000FF000000;
         doublepushes = (singlepushes << 8) & empty_squares & rank4;
         return singlepushes | doublepushes;
     } 
     //black
-    singlepushes = (BitBoard::pawn[0] >> 8) & empty_squares; 
+    singlepushes = (BitBoard::pieces[0][1] >> 8) & empty_squares; 
     const unsigned long long rank5 = 0x000000FF00000000;
     doublepushes = (singlepushes >> 8) & empty_squares & rank5;
     return singlepushes | doublepushes;
@@ -506,10 +433,10 @@ unsigned long long BitBoard::kingMoves(unsigned long long occ,
     return kingAttacks;
 }
 
-int BitBoard::getLowestSquare(unsigned long long attackSet) {
+int BitBoard::getHighestSquare(unsigned long long attackSet) {
     //given 0b10001, returns 0, for the index of the least significant set bit
     //used for iterating over squares of an attack set
-    return log2(attackSet & -(attackSet));
+    return log2(attackSet);
 }
 
 int BitBoard::getNumPieces(unsigned long long pieceSet) {

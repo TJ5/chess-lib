@@ -1,5 +1,7 @@
 #ifndef BITBOARD
 #define BITBOARD
+
+
 class BitBoard {
     public:
         BitBoard();
@@ -31,17 +33,22 @@ class BitBoard {
 
         unsigned long long kingMoves(unsigned long long occ, 
         unsigned long long rev_occ, int square, int color);
-    private:
+
         unsigned long long color[2]; //color[0] is white, color[1] is black
+        unsigned long long pieces[6][2];
+    private:
+        
+        /*
         unsigned long long bishop[2];
         unsigned long long knight[2];
         unsigned long long rook[2];
         unsigned long long queen[2];
         unsigned long long king[2];
         unsigned long long pawn[2];
+        */
+       //pawn, rook, knight, bishop, queen, king
 
-
-        int getLowestSquare(unsigned long long attackSet);
+        int getHighestSquare(unsigned long long attackSet);
         int getNumPieces(unsigned long long pieceSet);
         
 
