@@ -275,15 +275,64 @@ BitBoard::BitBoard(BitBoard &copy) {
 
 }
 
-BitBoard** BitBoard::getLegalBoards(int color) {
+BitBoard* BitBoard::getLegalBoards(int color) {
+    //We need to allocate room for bitboards equal to the number of
+    //set bits in all attacksets
+    unsigned long long occupied = BitBoard::color[0] | BitBoard::color[1];
+    unsigned long long rev_occupied = byteswap(occupied);
+    unsigned long long slider, rev_slider;
+    int oppositeColor = !((bool)(color));
+
+    BitBoard* childBoards;
+    int numPieces[6];
+    int pieceCount = 0;
+    for (int i = 0; i < 6; i++) {
+        numPieces[i] = BitBoard::getNumPieces(BitBoard::pieces[i][color]);
+        pieceCount += numPieces[i];
+    }
+
+    //Array of all attack set generation functions, excepting pawnpushes
+    unsigned long long (BitBoard::*pieceAttacks[6])(unsigned long long, unsigned long long, int, int);
+    pieceAttacks[0] = &BitBoard::pawnCaptures;
+    pieceAttacks[1] = &BitBoard::rookMoves;
+    pieceAttacks[2] = &BitBoard::knightMoves;
+    pieceAttacks[3] = &BitBoard::bishopMoves;
+    pieceAttacks[4] = &BitBoard::queenMoves;
+    pieceAttacks[5] = &BitBoard::kingMoves;
+
+    int index = 0, moves = 0;
+    unsigned long long* attackSets;
+    int* indices;
+    attackSets = new unsigned long long[pieceCount];
+    indices = new int[pieceCount];
+
+    unsigned long long pieceIterator;
+    unsigned long long att;
+
+    for (int i = 0; i < 6; i++) {
+        pieceIterator = BitBoard::pieces[i][color];
+        for (int j = 0; j < numPieces[i]; j++) {
+            int square = getHighestSquare(pieceIterator);
+            pieceIterator -= singleMask[square];
+            att = (*this.*pieceAttacks[i])(occupied, rev_occupied, square, color);
+            
+            indices[index] = square;
+            attackSets[index++] = att;
+            moves += getNumPieces(att);
+        }
+    }
+    BitBoard* childBoards;
+    childBoards = new BitBoard[moves];
+    
     
     
     
 
 
 
-
-    
+    delete[] indices;
+    delete[] attackSets;
+    return childBoards;
 }
 
 unsigned long long BitBoard::byteswap(unsigned long long in) {
