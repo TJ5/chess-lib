@@ -35,3 +35,4 @@
 *.pdb
 old.cpp
 *.ilk
+std
