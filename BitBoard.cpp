@@ -283,7 +283,7 @@ BitBoard* BitBoard::getLegalBoards(int color) {
     unsigned long long slider, rev_slider;
     int oppositeColor = !((bool)(color));
 
-    BitBoard* childBoards;
+    
     int numPieces[6];
     int pieceCount = 0;
     for (int i = 0; i < 6; i++) {
@@ -321,8 +321,11 @@ BitBoard* BitBoard::getLegalBoards(int color) {
             moves += getNumPieces(att);
         }
     }
-    BitBoard* childBoards;
-    childBoards = new BitBoard[moves];
+    //moves does not currently contain pawnpushes, which are calculated
+    //simultaneously for all pawns, so we now add those.
+    unsigned long long pawnMoves = pawnPushes(occupied, color);
+    moves += getNumPieces(pawnMoves);
+    BitBoard* childBoards = new BitBoard[moves];
     
     
     
@@ -362,8 +365,9 @@ unsigned long long BitBoard::rookMoves(unsigned long long occ, unsigned long lon
     //Take the rook, bitshift left, and subtract from the set of other occupied squares
     //The bits that change were vacant so they are legal, so we XOR to isolate them
     //repeat in reverse for ray attacks to the left
-    rookAttacks = rookAttacks ^ ((occ - (slider << 1)) ^ byteswap(rev_occ - (rev_slider << 1)));
+    rookAttacks ^= ((occ - (slider << 1)) ^ byteswap(rev_occ - (rev_slider << 1)));
     //Now, remove pieces of the same color as self captures are illegal
+    rookAttacks &= horizontalMask[square]; //bound to row
     rookAttacks = rookAttacks ^ (horizontalMask[square] & BitBoard::color[color] & rookAttacks);
     
     //Vertical attacks:
@@ -443,8 +447,7 @@ unsigned long long BitBoard::getKnightMask(int sq) {
     return knightMask[sq];
 }
 
-unsigned long long BitBoard::pawnPushes(unsigned long long occ, 
-        unsigned long long rev_occ, int square, int color) {
+unsigned long long BitBoard::pawnPushes(unsigned long long occ, int color) {
     //pawn movement in general is the union of pushes and captures
     //pushes are either by two squares or one, so we calculate both possibilities
     unsigned long long empty_squares = ~(occ);

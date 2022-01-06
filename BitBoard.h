@@ -25,8 +25,7 @@ class BitBoard {
         unsigned long long knightMoves(unsigned long long occ, 
         unsigned long long rev_occ, int square, int color);
         
-        unsigned long long pawnPushes(unsigned long long occ, 
-        unsigned long long rev_occ, int square, int color);
+        unsigned long long pawnPushes(unsigned long long occ, int color);
         
         unsigned long long pawnCaptures(unsigned long long occ, 
         unsigned long long rev_occ, int square, int color);
