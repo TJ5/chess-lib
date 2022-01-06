@@ -9,7 +9,7 @@ static unsigned long long antidiagonalMask[64];
 static unsigned long long knightMask[64];
 static unsigned long long pawnCaptureMask[2][64];
 static unsigned long long kingMask[64];
-static unsigned long long zeroMask[64];
+static unsigned long long zeroMask[2][64];
 static bool initialized = false;
 BitBoard::BitBoard() {
     //initialize starting pos
@@ -179,11 +179,16 @@ BitBoard::BitBoard() {
 
             //Zero mask: used for pawn pushes,
             //all bits of n or greater significance are 0, all others are 1
+            //for white, inverse for black
             unsigned long long zMask = 0xffffffffffffffff;
             for (int i = 63; i >= 0; i--) {
+                zeroMask[1][i] = ~zMask;
                 zMask ^= singleMask[i];
-                zeroMask[i] = zMask;
+                zeroMask[0][i] = zMask;
+                
             }
+            
+            
         }
 
         //Pawn captures:
@@ -263,7 +268,7 @@ BitBoard::BitBoard(BitBoard &copy) {
     BitBoard::pieces[0][0] = copy.pieces[0][0];
     BitBoard::pieces[0][1] = copy.pieces[0][1];
     BitBoard::pieces[2][0] = copy.pieces[2][0];
-    BitBoard::pieces[2][1] = copy.pieces[0][1];
+    BitBoard::pieces[2][1] = copy.pieces[2][1];
     BitBoard::pieces[3][0] = copy.pieces[3][0];
     BitBoard::pieces[3][1] = copy.pieces[3][1];
     BitBoard::pieces[1][0] = copy.pieces[1][0];
@@ -276,6 +281,14 @@ BitBoard::BitBoard(BitBoard &copy) {
 }
 
 BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
+    /**
+     * STILL TO BE IMPLEMENTED
+     * CHECKS
+     * CASTLES
+     * EN PASSANT
+     * ??
+     */
+
     //We need to allocate room for bitboards equal to the number of
     //set bits in all attacksets
     unsigned long long occupied = BitBoard::color[0] | BitBoard::color[1];
@@ -329,7 +342,8 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     //moves does not currently contain pawnpushes, which are calculated
     //simultaneously for all pawns, so we now add those.
     unsigned long long pawnMoves = pawnPushes(occupied, color);
-    *moves += getNumPieces(pawnMoves);
+    int pushes = getNumPieces(pawnMoves);
+    *moves += pushes;
     BitBoard* childBoards = new BitBoard[*moves];
     //Now, loop through each attackset to generate new Bitboards
     int m = 0;
@@ -366,6 +380,31 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
         }
     }
     
+    //Now generating pawn push bitboards
+    pieceIterator = pawnMoves;
+    for (int i = 0; i < pushes; i++) {
+        BitBoard child(*this);
+        int dest_square = getHighestSquare(pieceIterator);
+        pieceIterator -= singleMask[dest_square];
+        
+        unsigned long long move = BitBoard::pieces[0][color];
+        unsigned long long col = BitBoard::color[color];
+        move ^= singleMask[dest_square];
+        col ^= singleMask[dest_square];
+
+        //Find source square of pawn move:
+        //We take the pawn set and isolate the column of the pawn push with the vertical mask
+        //The pawn that was pushed is the most significant bit that is less than the dest square bit
+        //So, zero out all bits of greater or equal significance to dest square and get the highest bit
+        int square = getHighestSquare(zeroMask[color][dest_square] & verticalMask[dest_square] & BitBoard::pieces[0][color]);
+
+        move ^= singleMask[square];
+        col ^= singleMask[square];
+
+        child.pieces[0][color] = move;
+        child.color[color] = col;
+        childBoards[m++] = child;
+    }
     
     
 
