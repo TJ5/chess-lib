@@ -280,7 +280,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     //set bits in all attacksets
     unsigned long long occupied = BitBoard::color[0] | BitBoard::color[1];
     unsigned long long rev_occupied = byteswap(occupied);
-    unsigned long long slider, rev_slider;
+    
     int oppositeColor = !((bool)(color));
 
     
@@ -304,8 +304,11 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     *moves = 0;
     unsigned long long* attackSets;
     int* indices;
+    int* pieceTypes;
+
     attackSets = new unsigned long long[pieceCount];
     indices = new int[pieceCount];
+    pieceTypes = new int[pieceCount];
 
     unsigned long long pieceIterator;
     unsigned long long att;
@@ -318,6 +321,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
             att = (*this.*pieceAttacks[i])(occupied, rev_occupied, square, color);
             
             indices[index] = square;
+            pieceTypes[index] = i;
             attackSets[index++] = att;
             *moves += getNumPieces(att);
         }
@@ -328,7 +332,39 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     *moves += getNumPieces(pawnMoves);
     BitBoard* childBoards = new BitBoard[*moves];
     //Now, loop through each attackset to generate new Bitboards
+    int m = 0;
 
+    for (int i = 0; i < pieceCount; i++) {
+        int attacks = getNumPieces(attackSets[i]);
+        pieceIterator = attackSets[i];
+        for (int j = 0; j < attacks; j++) {
+            int dest_square = getHighestSquare(pieceIterator);
+            pieceIterator -= singleMask[dest_square];
+            BitBoard child(*this);
+
+            unsigned long long move = BitBoard::pieces[pieceTypes[i]][color];
+            unsigned long long col = BitBoard::color[color];
+            move ^= singleMask[indices[i]];
+            move ^= singleMask[dest_square];
+            col ^= singleMask[indices[i]];
+            col ^= singleMask[dest_square];
+            unsigned long long tempOpp;
+            //loop through opposite pieces and subtract collisions for
+            //captures
+            for (int p = 0; p < 6; p++) {
+                tempOpp = BitBoard::pieces[p][oppositeColor];
+                tempOpp -= (tempOpp & col);
+                child.pieces[p][oppositeColor] = tempOpp;
+            }
+            child.pieces[pieceTypes[i]][color] = move;
+            child.color[color] = col;
+            child.color[oppositeColor] -= (child.color[oppositeColor] & child.color[color]);
+
+            childBoards[m++] = child;
+            
+
+        }
+    }
     
     
     
@@ -337,6 +373,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
 
     delete[] indices;
     delete[] attackSets;
+    delete[] pieceTypes;
     return childBoards;
 }
 
