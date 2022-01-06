@@ -6,7 +6,7 @@ class BitBoard {
     public:
         BitBoard();
         BitBoard(BitBoard &copy);
-        BitBoard* getLegalBoards(int color);
+        BitBoard* getLegalBoards(int color, int* moves);
         static unsigned long long byteswap(unsigned long long in);
         unsigned long long getDiagonalMask(int sq);
         unsigned long long getAntiDiagonalMask(int sq);

@@ -275,7 +275,7 @@ BitBoard::BitBoard(BitBoard &copy) {
 
 }
 
-BitBoard* BitBoard::getLegalBoards(int color) {
+BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     //We need to allocate room for bitboards equal to the number of
     //set bits in all attacksets
     unsigned long long occupied = BitBoard::color[0] | BitBoard::color[1];
@@ -300,7 +300,8 @@ BitBoard* BitBoard::getLegalBoards(int color) {
     pieceAttacks[4] = &BitBoard::queenMoves;
     pieceAttacks[5] = &BitBoard::kingMoves;
 
-    int index = 0, moves = 0;
+    int index = 0;
+    *moves = 0;
     unsigned long long* attackSets;
     int* indices;
     attackSets = new unsigned long long[pieceCount];
@@ -318,15 +319,16 @@ BitBoard* BitBoard::getLegalBoards(int color) {
             
             indices[index] = square;
             attackSets[index++] = att;
-            moves += getNumPieces(att);
+            *moves += getNumPieces(att);
         }
     }
     //moves does not currently contain pawnpushes, which are calculated
     //simultaneously for all pawns, so we now add those.
     unsigned long long pawnMoves = pawnPushes(occupied, color);
-    moves += getNumPieces(pawnMoves);
-    BitBoard* childBoards = new BitBoard[moves];
-    
+    *moves += getNumPieces(pawnMoves);
+    BitBoard* childBoards = new BitBoard[*moves];
+    //Now, loop through each attackset to generate new Bitboards
+
     
     
     
