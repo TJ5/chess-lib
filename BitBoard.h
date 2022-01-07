@@ -1,6 +1,7 @@
 #ifndef BITBOARD
 #define BITBOARD
 
+#include <string>
 
 class BitBoard {
     public:
@@ -32,6 +33,8 @@ class BitBoard {
 
         unsigned long long kingMoves(unsigned long long occ, 
         unsigned long long rev_occ, int square, int color);
+
+        std::string fen();
 
         unsigned long long color[2]; //color[0] is white, color[1] is black
         unsigned long long pieces[6][2];

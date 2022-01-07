@@ -1,5 +1,7 @@
 #include "BitBoard.h"
 #include <cmath>
+#include <string>
+
 
 static unsigned long long singleMask[64]; 
 static unsigned long long verticalMask[64];
@@ -576,4 +578,63 @@ int BitBoard::getNumPieces(unsigned long long pieceSet) {
         pieceSet &= pieceSet - 1;
     }
     return count;
+}
+
+
+std::string BitBoard::fen() {
+    /**
+     * Generates board fen of the position
+     * Does not include info such as turn to move and castling rights
+     * 
+     */
+    std::string fen = "";
+    std::string rows[8];
+    for (int i = 0; i < 8; i++) {
+        rows[i] = "";
+    }
+    int space = 0;
+    char* fenChars[2];
+    char wChars[6] = {'P', 'R', 'N', 'B', 'Q', 'K'};
+    char bChars[6] = {'p', 'r', 'n', 'b', 'q', 'k'};
+    fenChars[0] = wChars;
+    fenChars[1] = bChars;
+    int row = 0;
+
+    for (int i = 0; i < 64; i++) {
+        
+        bool isPiece = false;
+        for (int j = 0; j < 2; j++) {
+            for (int p = 0; p < 6; p++) {
+                if (singleMask[i] & pieces[p][j]) {
+                    isPiece = true;
+                    if (space) {
+                        //space is always <= 8 and so is representable as a single char
+                        rows[row] += (char)(space + 48);
+                        space = 0;
+                    }
+                    rows[row] += fenChars[j][p];
+                }
+            }
+        }
+        if (!isPiece) {
+            space++;
+        }
+        if (singleMask[i] & verticalMask[63]) { //end of row
+
+            if (space) {
+                rows[row] += (char)(space + 48); 
+                space = 0;
+            }
+            if (i != 7) {
+                rows[row] += '/';
+            }
+            row++;
+        }
+        
+    }
+    for (int i = 7; i >= 0; i--) {
+        fen += rows[i];
+    }
+
+    return fen;
 }
