@@ -35,6 +35,11 @@ int test_depthtwo_movecount() {
     }
     delete[] depthone;
     cout << "Depth 2 move count: " << movecount_depthtwo << endl;
+<<<<<<< HEAD
     
     return movecount_depthtwo - 400;
+=======
+    return 1;
+    //return movecount_depthtwo - 400;
+>>>>>>> 11f68dde0c6732e26c494c250a6154e537f1140a
 }
