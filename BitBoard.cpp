@@ -263,7 +263,9 @@ BitBoard::BitBoard() {
 }
 
 BitBoard::BitBoard(BitBoard &copy) {
-    //Copy constructor, initialize a new bitboard identical to the current one
+    /**Copy constructor, 
+     * initialize a new bitboard identical to the current one
+     */
     initialized = true;
     BitBoard::color[0] = copy.color[0];
     BitBoard::color[1] = copy.color[1];
@@ -283,6 +285,11 @@ BitBoard::BitBoard(BitBoard &copy) {
 }
 
 BitBoard::BitBoard(std::string fen) {
+    /**
+     * Initializes bitboard from board fen string
+     * The fen should not include information such as turn and castling rights
+     * 
+     */
     //initialize all fields to zero
     for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 2; j++) {
@@ -379,11 +386,15 @@ BitBoard::BitBoard(std::string fen) {
 
 BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     /**
+     * Returns dynamically allocated array of legal child positions
+     * Sets *moves to the length of the array
+     * Caller must deallocate when done using
+     * 
      * STILL TO BE IMPLEMENTED
      * CHECKS
      * CASTLES
      * EN PASSANT
-     * ??
+     * 
      */
 
     //We need to allocate room for bitboards equal to the number of
