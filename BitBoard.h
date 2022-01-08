@@ -7,6 +7,7 @@ class BitBoard {
     public:
         BitBoard();
         BitBoard(BitBoard &copy);
+        BitBoard(std::string fen);
         BitBoard* getLegalBoards(int color, int* moves);
         static unsigned long long byteswap(unsigned long long in);
         unsigned long long getDiagonalMask(int sq);

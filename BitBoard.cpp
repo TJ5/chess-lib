@@ -282,6 +282,101 @@ BitBoard::BitBoard(BitBoard &copy) {
 
 }
 
+BitBoard::BitBoard(std::string fen) {
+    //initialize all fields to zero
+    for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 2; j++) {
+            BitBoard::pieces[i][j] = 0x0;
+        }
+    }
+    
+    //Break fen up into rows
+    std::string rows[8];
+    for (int i = 0; i < 8; i++) {
+        rows[i] = "";
+    }
+
+    int r = 7;
+    for (int i = 0; i < fen.length(); i++) {
+        if (fen.at(i) == '/') {
+            r--;
+            continue;
+        }
+        rows[r] += fen.at(i);
+    }
+
+
+    int square = 0;
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < rows[i].length(); j++) {
+            char piece = rows[i].at(j);
+            int col;
+            if ((int)(piece) <= 57 && (int)(piece) >= 48) {
+                square += (int)(piece) - 48;
+                continue;
+            }
+            
+
+            switch(piece) {
+                case 'R' :
+                    BitBoard::pieces[1][0] |= singleMask[square];
+                    break;
+                case 'N' :
+                    BitBoard::pieces[2][0] |= singleMask[square];
+                    break;
+                case 'B' :
+                    BitBoard::pieces[3][0] |= singleMask[square];
+                    break;
+                case 'Q' :
+                    BitBoard::pieces[4][0] |= singleMask[square];
+                    break;
+                case 'K' :
+                    BitBoard::pieces[5][0] |= singleMask[square];
+                    break;
+                case 'P' :
+                    BitBoard::pieces[0][0] |= singleMask[square];
+                    break;
+                case 'r' :
+                    BitBoard::pieces[1][1] |= singleMask[square];
+                    break;
+                case 'n' :
+                    BitBoard::pieces[2][1] |= singleMask[square];
+                    break;
+                case 'b' :
+                    BitBoard::pieces[3][1] |= singleMask[square];
+                    break;
+                case 'q' :
+                    BitBoard::pieces[4][1] |= singleMask[square];
+                    break;
+                case 'k' :
+                    BitBoard::pieces[5][1] |= singleMask[square];
+                    break;
+                case 'p' :
+                    BitBoard::pieces[0][1] |= singleMask[square];
+                    break;
+            }
+            square++;
+        }
+    }
+
+    BitBoard::color[0] = 0x0, BitBoard::color[1] = 0x0;
+    BitBoard::color[0] |= BitBoard::pieces[0][0];
+    BitBoard::color[0] |= BitBoard::pieces[1][0];
+    BitBoard::color[0] |= BitBoard::pieces[2][0];
+    BitBoard::color[0] |= BitBoard::pieces[3][0];
+    BitBoard::color[0] |= BitBoard::pieces[4][0];
+    BitBoard::color[0] |= BitBoard::pieces[5][0];
+    BitBoard::color[1] |= BitBoard::pieces[0][1];
+    BitBoard::color[1] |= BitBoard::pieces[1][1];
+    BitBoard::color[1] |= BitBoard::pieces[2][1];
+    BitBoard::color[1] |= BitBoard::pieces[3][1];
+    BitBoard::color[1] |= BitBoard::pieces[4][1];
+    BitBoard::color[1] |= BitBoard::pieces[5][1];
+
+}
+
+
+
 BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     /**
      * STILL TO BE IMPLEMENTED
