@@ -176,20 +176,17 @@ BitBoard::BitBoard() {
                     }
                 }
             }
-            knightMask[i] = kmask;
-            
+            knightMask[i] = kmask; 
+        }
 
-            //Zero mask: used for pawn pushes,
-            //all bits of n or greater significance are 0, all others are 1
-            //for white, inverse for black
-            unsigned long long zMask = 0xffffffffffffffff;
-            for (int i = 63; i >= 0; i--) {
-                zeroMask[1][i] = ~zMask;
-                zMask ^= singleMask[i];
-                zeroMask[0][i] = zMask;
-                
-            }
-            
+        //Zero mask: used for pawn pushes,
+        //all bits of n or greater significance are 0, all others are 1
+        //for white, inverse for black
+        unsigned long long zMask = 0xffffffffffffffff;
+        for (int i = 63; i >= 0; i--) {
+            zeroMask[1][i] = ~zMask;
+            zMask ^= singleMask[i];
+            zeroMask[0][i] = zMask;
             
         }
 
@@ -672,11 +669,14 @@ unsigned long long BitBoard::kingMoves(unsigned long long occ,
 }
 
 int BitBoard::getHighestSquare(unsigned long long attackSet) {
-    //given 0b10001, returns 0, for the index of the least significant set bit
+    
     //used for iterating over squares of an attack set
     return log2(attackSet);
 }
-
+int BitBoard::getLowestSquare(unsigned long long attackSet) {
+    //given 0b10001, returns 0, for the index of the least significant set bit
+    return log2(attackSet & -attackSet);
+}
 int BitBoard::getNumPieces(unsigned long long pieceSet) {
     //returns number of set bits by Kernighan's algorithm
     int count;
@@ -686,6 +686,32 @@ int BitBoard::getNumPieces(unsigned long long pieceSet) {
     return count;
 }
 
+unsigned long long BitBoard::posDiagonalPins(unsigned long long occ, unsigned long long rev_occ, int color) {
+    int king = getHighestSquare(BitBoard::pieces[5][color]);
+    int oppCol = (int)(!(bool)(color));
+    unsigned long long pinner = diagonalMask[king] & (zeroMask[1][king] | singleMask[king]);
+    pinner &= (BitBoard::pieces[3][oppCol] | BitBoard::pieces[4][oppCol]);
+    if (pinner == 0) {return 0;}
+    //p contains the set of potential pinners on the positive diagonal
+    //only the least significant one of these can be a pinner
+
+    int pinnerSq = getLowestSquare(pinner);
+    unsigned long long att = bishopMoves(occ, rev_occ, pinnerSq, oppCol) & diagonalMask[king];
+    unsigned long long blockers = BitBoard::color[color];
+    blockers &= att; //where blockers is now attacked pieces by the pinner
+
+    //calculate the moves of the same pinner without the blocking piece
+    //xOr out the other attack
+    //the remaining set bits are "xrayed" through the blocking piece
+    //if xRay contains the king's square, then the blocking piece was pinned
+    unsigned long long xRay = att ^ (bishopMoves(occ ^ blockers, rev_occ, pinnerSq, oppCol) & diagonalMask[king]);
+    
+    //0 if no xRay
+    if (!(xRay & BitBoard::pieces[5][color])) {return 0;}
+
+    return  att & BitBoard::color[color];
+
+}
 
 std::string BitBoard::fen() {
     /**

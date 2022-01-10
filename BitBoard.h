@@ -16,29 +16,37 @@ class BitBoard {
         
         //public only for testing:
         unsigned long long rookMoves(unsigned long long, 
-        unsigned long long, int , int );
+            unsigned long long, int , int );
         
         unsigned long long bishopMoves(unsigned long long, 
-        unsigned long long rev_occ, int square, int color);
+            unsigned long long rev_occ, int square, int color);
 
         unsigned long long queenMoves(unsigned long long occ, 
-        unsigned long long rev_occ, int square, int color);
+            unsigned long long rev_occ, int square, int color);
 
         unsigned long long knightMoves(unsigned long long occ, 
-        unsigned long long rev_occ, int square, int color);
+            unsigned long long rev_occ, int square, int color);
         
         unsigned long long pawnPushes(unsigned long long occ, int color);
         
         unsigned long long pawnCaptures(unsigned long long occ, 
-        unsigned long long rev_occ, int square, int color);
+            unsigned long long rev_occ, int square, int color);
 
         unsigned long long kingMoves(unsigned long long occ, 
-        unsigned long long rev_occ, int square, int color);
+            unsigned long long rev_occ, int square, int color);
+
+
+        unsigned long long posDiagonalPins(unsigned long long occ, 
+            unsigned long long rev_occ, int color);
 
         std::string fen();
 
         unsigned long long color[2]; //color[0] is white, color[1] is black
         unsigned long long pieces[6][2];
+        int getHighestSquare(unsigned long long attackSet);
+        int getLowestSquare(unsigned long long attackSet);
+        int getNumPieces(unsigned long long pieceSet);
+
     private:
         
         /*
@@ -51,8 +59,7 @@ class BitBoard {
         */
        //pawn, rook, knight, bishop, queen, king
 
-        int getHighestSquare(unsigned long long attackSet);
-        int getNumPieces(unsigned long long pieceSet);
+        
         
 
         
