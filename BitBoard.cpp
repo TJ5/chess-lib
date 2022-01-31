@@ -181,7 +181,7 @@ BitBoard::BitBoard() {
 
         //Zero mask: used for pawn pushes,
         //all bits of n or greater significance are 0, all others are 1
-        //for white, inverse for black
+        //zeroMask[1][n] will have all bits of n or greater significance be 1, all others 0
         unsigned long long zMask = 0xffffffffffffffff;
         for (int i = 63; i >= 0; i--) {
             zeroMask[1][i] = ~zMask;
@@ -301,7 +301,7 @@ BitBoard::BitBoard(std::string fen) {
     }
 
     int r = 7;
-    for (int i = 0; i < fen.length(); i++) {
+    for (unsigned int i = 0; i < fen.length(); i++) {
         if (fen.at(i) == '/') {
             r--;
             continue;
@@ -312,9 +312,9 @@ BitBoard::BitBoard(std::string fen) {
 
     int square = 0;
     for (int i = 0; i < 8; i++) {
-        for (int j = 0; j < rows[i].length(); j++) {
+        for (unsigned int j = 0; j < rows[i].length(); j++) {
             char piece = rows[i].at(j);
-            int col;
+            
             if ((int)(piece) <= 57 && (int)(piece) >= 48) {
                 square += (int)(piece) - 48;
                 continue;
@@ -602,7 +602,7 @@ unsigned long long BitBoard::bishopMoves(unsigned long long occ, unsigned long l
     up = (occ & diagonalMask[square]) - slider;
     down = byteswap(up);
     up -= slider;
-    down -= byteswap(slider);
+    down -= rev_slider;
     up = up ^ byteswap(down);
     bishopAttacks = bishopAttacks ^ (up & diagonalMask[square]);
     
@@ -613,7 +613,7 @@ unsigned long long BitBoard::bishopMoves(unsigned long long occ, unsigned long l
     up = (occ & antidiagonalMask[square]) - slider;
     down = byteswap(up);
     up -= slider;
-    down -= byteswap(slider);
+    down -= rev_slider;
     up = up ^ byteswap(down);
     bishopAttacks = bishopAttacks ^ (up & antidiagonalMask[square]);
     
@@ -714,10 +714,11 @@ int BitBoard::getNumPieces(unsigned long long pieceSet) {
 unsigned long long BitBoard::posDiagonalPins(unsigned long long occ, unsigned long long rev_occ, int color) {
     int king = getHighestSquare(BitBoard::pieces[5][color]);
     int oppCol = (int)(!(bool)(color));
+
     unsigned long long pinner = diagonalMask[king] & (zeroMask[1][king] | singleMask[king]);
     pinner &= (BitBoard::pieces[3][oppCol] | BitBoard::pieces[4][oppCol]);
     if (pinner == 0) {return 0;}
-    //p contains the set of potential pinners on the positive diagonal
+    //pinner contains the set of potential pinners on the positive diagonal
     //only the least significant one of these can be a pinner
 
     int pinnerSq = getLowestSquare(pinner);
@@ -731,7 +732,7 @@ unsigned long long BitBoard::posDiagonalPins(unsigned long long occ, unsigned lo
     //if xRay contains the king's square, then the blocking piece was pinned
     unsigned long long xRay = att ^ (bishopMoves(occ ^ blockers, rev_occ, pinnerSq, oppCol) & diagonalMask[king]);
     
-    //0 if no xRay
+    //0 if no xRay - there is another piece blocking so no pin
     if (!(xRay & BitBoard::pieces[5][color])) {return 0;}
 
     return  att & BitBoard::color[color];
