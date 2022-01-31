@@ -440,7 +440,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
             int square = getHighestSquare(pieceIterator);
             pieceIterator -= singleMask[square];
             att = (*this.*pieceAttacks[i])(occupied, rev_occupied, square, color);
-            if (singleMask[square] & posDiagonalPins(occupied, rev_occupied, color)) {
+            if (singleMask[square] & diagonalPins(occupied, rev_occupied, color)) {
                 att &= diagonalMask[square];
             }
             indices[index] = square;
@@ -507,7 +507,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
         //The pawn that was pushed is the most significant bit that is less than the dest square bit
         //So, zero out all bits of greater or equal significance to dest square and get the highest bit
         int square = getHighestSquare(zeroMask[color][dest_square] & verticalMask[dest_square] & BitBoard::pieces[0][color]);
-        if (singleMask[square] & posDiagonalPins(occupied, rev_occupied, color)) {
+        if (singleMask[square] & diagonalPins(occupied, rev_occupied, color)) {
             //if the pawn is pinned diagonally, it cannot be pushed
             
             
@@ -711,31 +711,46 @@ int BitBoard::getNumPieces(unsigned long long pieceSet) {
     return count;
 }
 
-unsigned long long BitBoard::posDiagonalPins(unsigned long long occ, unsigned long long rev_occ, int color) {
+unsigned long long BitBoard::diagonalPins(unsigned long long occ, unsigned long long rev_occ, int color) {
+    /**
+     * @brief returns set of pinned pieces on the diagonal
+     * 
+     * 
+     */
+    
+    
+    
     int king = getHighestSquare(BitBoard::pieces[5][color]);
     int oppCol = (int)(!(bool)(color));
 
-    unsigned long long pinner = diagonalMask[king] & (zeroMask[1][king] | singleMask[king]);
-    pinner &= (BitBoard::pieces[3][oppCol] | BitBoard::pieces[4][oppCol]);
-    if (pinner == 0) {return 0;}
-    //pinner contains the set of potential pinners on the positive diagonal
-    //only the least significant one of these can be a pinner
-
-    int pinnerSq = getLowestSquare(pinner);
-    unsigned long long att = bishopMoves(occ, rev_occ, pinnerSq, oppCol) & diagonalMask[king];
-    unsigned long long blockers = BitBoard::color[color];
-    blockers &= att; //where blockers is now attacked pieces by the pinner
-
-    //calculate the moves of the same pinner without the blocking piece
-    //xOr out the other attack
-    //the remaining set bits are "xrayed" through the blocking piece
-    //if xRay contains the king's square, then the blocking piece was pinned
-    unsigned long long xRay = att ^ (bishopMoves(occ ^ blockers, rev_occ, pinnerSq, oppCol) & diagonalMask[king]);
+    unsigned long long posPinner = diagonalMask[king] & (zeroMask[1][king] | singleMask[king]);
+    unsigned long long negPinner = diagonalMask[king] & (zeroMask[0][king] | singleMask[king]);
+    posPinner &= (BitBoard::pieces[3][oppCol] | BitBoard::pieces[4][oppCol]);
+    negPinner &= (BitBoard::pieces[3][oppCol] | BitBoard::pieces[4][oppCol]);
+    if (posPinner == 0 && negPinner == 0) {return 0;}
     
-    //0 if no xRay - there is another piece blocking so no pin
-    if (!(xRay & BitBoard::pieces[5][color])) {return 0;}
+    unsigned long long posxRay = 0;
+    unsigned long long negxRay = 0;
+    unsigned long long posAtt = 0;
+    unsigned long long negAtt = 0;
+    if (posPinner) {
+        int posPinnerSq = getLowestSquare(posPinner);
+        posAtt = bishopMoves(occ, rev_occ, posPinnerSq, oppCol) & diagonalMask[king];
+        unsigned long long posBloc = BitBoard::color[color] & posAtt;
+        posxRay = posAtt ^ (bishopMoves(occ ^ posBloc, rev_occ, posPinnerSq, oppCol) & diagonalMask[king]);
 
-    return  att & BitBoard::color[color];
+    }
+    if (negPinner) {
+        int negPinnerSq = getHighestSquare(negPinner);
+        negAtt = bishopMoves(occ, rev_occ, negPinnerSq, oppCol) & diagonalMask[king];
+        unsigned long long negBloc = BitBoard::color[color] & negAtt;
+        negxRay = negAtt ^ (bishopMoves(occ ^ negBloc, rev_occ, negPinnerSq, oppCol) & diagonalMask[king]);
+
+    }
+
+    if (!(posxRay & BitBoard::pieces[5][color] || negxRay & BitBoard::pieces[5][color])) {return 0;}
+
+    return (posAtt & BitBoard::color[color]) | (negAtt & BitBoard::color[color]);
 
 }
 

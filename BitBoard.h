@@ -37,7 +37,7 @@ class BitBoard {
             unsigned long long rev_occ, int square, int color);
 
 
-        unsigned long long posDiagonalPins(unsigned long long occ, 
+        unsigned long long diagonalPins(unsigned long long occ, 
             unsigned long long rev_occ, int color);
 
         std::string fen();
