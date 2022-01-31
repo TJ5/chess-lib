@@ -10,6 +10,7 @@ class BitBoard {
         BitBoard(std::string fen);
         BitBoard* getLegalBoards(int color, int* moves);
         static unsigned long long byteswap(unsigned long long in);
+        static unsigned long long bitswap(unsigned long long in);
         unsigned long long getDiagonalMask(int sq);
         unsigned long long getAntiDiagonalMask(int sq);
         unsigned long long getKnightMask(int sq);

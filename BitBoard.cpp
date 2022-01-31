@@ -233,25 +233,25 @@ BitBoard::BitBoard() {
             kmask = 0x0;
             //not first column
             if (!(singleMask[i] & verticalMask[0])) {
-                kmask ^= singleMask[i - 1];
+                kmask |= singleMask[i - 1];
                 if (!(singleMask[i] & horizontalMask[0])) {
-                    kmask ^= singleMask[i - 9];
-                    kmask ^= singleMask[i - 8];
+                    kmask |= singleMask[i - 9];
+                    kmask |= singleMask[i - 8];
                 }
                 if (!(singleMask[i] & horizontalMask[56])) {
-                    kmask ^= singleMask[i + 7];
-                    kmask ^= singleMask[i + 8];
+                    kmask |= singleMask[i + 7];
+                    kmask |= singleMask[i + 8];
                 }
             }
             if (!(singleMask[i] & verticalMask[7])) {
-                kmask ^= singleMask[i + 1];
+                kmask |= singleMask[i + 1];
                 if (!(singleMask[i] & horizontalMask[0])) {
-                    kmask ^= singleMask[i - 7];
-                    kmask ^= singleMask[i - 8];
+                    kmask |= singleMask[i - 7];
+                    kmask |= singleMask[i - 8];
                 }
                 if (!(singleMask[i] & horizontalMask[56])) {
-                    kmask ^= singleMask[i + 9];
-                    kmask ^= singleMask[i + 8];
+                    kmask |= singleMask[i + 9];
+                    kmask |= singleMask[i + 8];
                 }
             }
             kingMask[i] = kmask;
@@ -390,6 +390,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
      * STILL TO BE IMPLEMENTED
      * CHECKS
      * CASTLES
+     * PINS
      * EN PASSANT
      * 
      */
@@ -397,7 +398,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     //We need to allocate room for bitboards equal to the number of
     //set bits in all attacksets
     unsigned long long occupied = BitBoard::color[0] | BitBoard::color[1];
-    unsigned long long rev_occupied = byteswap(occupied);
+    unsigned long long rev_occupied = bitswap(occupied);
     
     int oppositeColor = !((bool)(color));
 
@@ -424,6 +425,8 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     int* indices;
     int* pieceTypes;
 
+    //arrays of attacks, square indexes, and index of the piece of each piece on the board
+    //increment *moves by each set bit of each attackset
     attackSets = new unsigned long long[pieceCount];
     indices = new int[pieceCount];
     pieceTypes = new int[pieceCount];
@@ -437,7 +440,9 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
             int square = getHighestSquare(pieceIterator);
             pieceIterator -= singleMask[square];
             att = (*this.*pieceAttacks[i])(occupied, rev_occupied, square, color);
-            
+            if (singleMask[square] & posDiagonalPins(occupied, rev_occupied, color)) {
+                att &= diagonalMask[square];
+            }
             indices[index] = square;
             pieceTypes[index] = i;
             attackSets[index++] = att;
@@ -449,7 +454,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     unsigned long long pawnMoves = pawnPushes(occupied, color);
     int pushes = getNumPieces(pawnMoves);
     *moves += pushes;
-    BitBoard* childBoards = new BitBoard[*moves];
+    BitBoard* childBoards = (BitBoard*)malloc(*moves * (sizeof(BitBoard)));
     //Now, loop through each attackset to generate new Bitboards
     int m = 0;
 
@@ -502,7 +507,14 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
         //The pawn that was pushed is the most significant bit that is less than the dest square bit
         //So, zero out all bits of greater or equal significance to dest square and get the highest bit
         int square = getHighestSquare(zeroMask[color][dest_square] & verticalMask[dest_square] & BitBoard::pieces[0][color]);
-
+        if (singleMask[square] & posDiagonalPins(occupied, rev_occupied, color)) {
+            //if the pawn is pinned diagonally, it cannot be pushed
+            
+            
+            (*moves)--;
+            
+            continue;
+        }
         move ^= singleMask[square];
         col ^= singleMask[square];
 
@@ -535,10 +547,23 @@ unsigned long long BitBoard::byteswap(unsigned long long in) {
     return in;
 }
 
+unsigned long long BitBoard::bitswap(unsigned long long in) {
+    in = (((in & 0xaaaaaaaaaaaaaaaa) >> 1) | ((in & 0x5555555555555555) << 1));
+    in = (((in & 0xcccccccccccccccc) >> 2) | ((in & 0x3333333333333333) << 2));
+    in = (((in & 0xf0f0f0f0f0f0f0f0) >> 4) | ((in & 0x0f0f0f0f0f0f0f0f) << 4));
+    //swaps bytes
+    in = (((in & 0xff00ff00ff00ff00) >> 8) | ((in & 0x00ff00ff00ff00ff) << 8));
+    //swaps 2 bytes
+    in = (((in & 0xffff0000ffff0000) >> 16) | ((in & 0x0000ffff0000ffff) << 16));
+    //swaps 4 bytes
+    in = (((in & 0xffffffff00000000) >> 32) | ((in & 0x00000000ffffffff) << 32));
+    return in;
+}
+
 unsigned long long BitBoard::rookMoves(unsigned long long occ, unsigned long long rev_occ, int square, int color) {
     unsigned long long rookAttacks = 0x0;
     unsigned long long slider = BitBoard::color[color] & singleMask[square];
-    unsigned long long rev_slider = byteswap(slider);
+    unsigned long long rev_slider = bitswap(slider);
     unsigned long long up, down;
     //these are positive and negative horizontal "ray" attacks,
     //which begin from squares adjacent to the rook and 
@@ -548,10 +573,10 @@ unsigned long long BitBoard::rookMoves(unsigned long long occ, unsigned long lon
     //Take the rook, bitshift left, and subtract from the set of other occupied squares
     //The bits that change were vacant so they are legal, so we XOR to isolate them
     //repeat in reverse for ray attacks to the left
-    rookAttacks ^= ((occ - (slider << 1)) ^ byteswap(rev_occ - (rev_slider << 1)));
+    rookAttacks = ((occ - (slider << 1)) ^ bitswap(rev_occ - (rev_slider << 1)));
     //Now, remove pieces of the same color as self captures are illegal
     rookAttacks &= horizontalMask[square]; //bound to row
-    rookAttacks = rookAttacks ^ (horizontalMask[square] & BitBoard::color[color] & rookAttacks);
+    rookAttacks ^= (horizontalMask[square] & BitBoard::color[color] & rookAttacks);
     
     //Vertical attacks:
     up = (occ & verticalMask[square]) - slider;
