@@ -434,8 +434,11 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     pieceSet pieceIterator;
     pieceSet att;
 
+    //pins:
     pieceSet adPins = diagonalPins(occupied, rev_occupied, color, antidiagonalMask);
     pieceSet dPins = diagonalPins(occupied, rev_occupied, color, diagonalMask);
+    pieceSet vPins = cardinalPins(occupied, rev_occupied, color, verticalMask);
+    pieceSet hPins = cardinalPins(occupied, rev_occupied, color, horizontalMask);
 
     for (int i = 0; i < 6; i++) {
         pieceIterator = BitBoard::pieces[i][color];
@@ -448,6 +451,12 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
             }
             if (singleMask[square] & adPins) {
                 att &= antidiagonalMask[square];
+            }
+            if (singleMask[square] & vPins) {
+                att &= verticalMask[square];
+            }
+            if (singleMask[square] & hPins) {
+                att &= horizontalMask[square];
             }
             indices[index] = square;
             pieceTypes[index] = i;
@@ -513,7 +522,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
         //The pawn that was pushed is the most significant bit that is less than the dest square bit
         //So, zero out all bits of greater or equal significance to dest square and get the highest bit
         int square = getHighestSquare(zeroMask[color][dest_square] & verticalMask[dest_square] & BitBoard::pieces[0][color]);
-        if (singleMask[square] & dPins || singleMask[square] & adPins) {
+        if ((singleMask[square] & dPins) || (singleMask[square] & adPins) || (singleMask[square] & hPins)) {
             //if the pawn is pinned diagonally, it cannot be pushed
             
             
@@ -758,6 +767,40 @@ pieceSet BitBoard::diagonalPins(pieceSet occ, pieceSet rev_occ, int color, piece
 
     return (posAtt & BitBoard::color[color]) | (negAtt & BitBoard::color[color]);
 
+}
+
+pieceSet BitBoard::cardinalPins(pieceSet occ, pieceSet rev_occ, int color, pieceSet* mask) {
+    int king = getHighestSquare(BitBoard::pieces[5][color]);
+    int oppCol = (int)(!(bool)(color));
+
+    pieceSet posPinner = mask[king] & (zeroMask[1][king] | singleMask[king]);
+    pieceSet negPinner = mask[king] & (zeroMask[0][king] | singleMask[king]);
+    posPinner &= (BitBoard::pieces[1][oppCol] | BitBoard::pieces[4][oppCol]);
+    negPinner &= (BitBoard::pieces[1][oppCol] | BitBoard::pieces[4][oppCol]);
+    if (posPinner == 0 && negPinner == 0) {return 0;}
+    
+    pieceSet posxRay = 0;
+    pieceSet negxRay = 0;
+    pieceSet posAtt = 0;
+    pieceSet negAtt = 0;
+    if (posPinner) {
+        int posPinnerSq = getLowestSquare(posPinner);
+        posAtt = rookMoves(occ, rev_occ, posPinnerSq, oppCol) & mask[king];
+        pieceSet posBloc = BitBoard::color[color] & posAtt;
+        posxRay = posAtt ^ (rookMoves(occ ^ posBloc, rev_occ, posPinnerSq, oppCol) & mask[king]);
+
+    }
+    if (negPinner) {
+        int negPinnerSq = getHighestSquare(negPinner);
+        negAtt = rookMoves(occ, rev_occ, negPinnerSq, oppCol) & mask[king];
+        pieceSet negBloc = BitBoard::color[color] & negAtt;
+        negxRay = negAtt ^ (rookMoves(occ ^ negBloc, rev_occ, negPinnerSq, oppCol) & mask[king]);
+
+    }
+
+    if (!(posxRay & BitBoard::pieces[5][color] || negxRay & BitBoard::pieces[5][color])) {return 0;}
+
+    return (posAtt & BitBoard::color[color]) | (negAtt & BitBoard::color[color]);
 }
 
 std::string BitBoard::fen() {
