@@ -3,15 +3,15 @@
 #include <string>
 
 
-static unsigned long long singleMask[64]; 
-static unsigned long long verticalMask[64];
-static unsigned long long diagonalMask[64];
-static unsigned long long horizontalMask[64];
-static unsigned long long antidiagonalMask[64];
-static unsigned long long knightMask[64];
-static unsigned long long pawnCaptureMask[2][64];
-static unsigned long long kingMask[64];
-static unsigned long long zeroMask[2][64];
+static pieceSet singleMask[64]; 
+static pieceSet verticalMask[64];
+static pieceSet diagonalMask[64];
+static pieceSet horizontalMask[64];
+static pieceSet antidiagonalMask[64];
+static pieceSet knightMask[64];
+static pieceSet pawnCaptureMask[2][64];
+static pieceSet kingMask[64];
+static pieceSet zeroMask[2][64];
 static bool initialized = false;
 BitBoard::BitBoard() {
     //initialize starting pos
@@ -33,11 +33,11 @@ BitBoard::BitBoard() {
     //generate masks just once for all bitboards:
     if (!(initialized)) {
         initialized = true;
-        unsigned long long mask = 0x0000000000000001;
-        unsigned long long hmask = 0x00000000000000ff; //the first row
-        unsigned long long vmask = 0x0101010101010101; //first column
-        unsigned long long dmask = 0x0000000000000080; //diagonal mask of h1
-        unsigned long long admask = 0x0000000000000001; //antidiagonal mask of a1
+        pieceSet mask = 0x0000000000000001;
+        pieceSet hmask = 0x00000000000000ff; //the first row
+        pieceSet vmask = 0x0101010101010101; //first column
+        pieceSet dmask = 0x0000000000000080; //diagonal mask of h1
+        pieceSet admask = 0x0000000000000001; //antidiagonal mask of a1
         singleMask[0] = mask;
         horizontalMask[0] = hmask;
         //Vertical mask:
@@ -117,7 +117,7 @@ BitBoard::BitBoard() {
         }
 
         //Knight mask:
-        unsigned long long kmask = 0x0;
+        pieceSet kmask = 0x0;
         
         for(int i = 0; i < 64; i++) {
             kmask = 0x0;
@@ -182,7 +182,7 @@ BitBoard::BitBoard() {
         //Zero mask: used for pawn pushes,
         //all bits of n or greater significance are 0, all others are 1
         //zeroMask[1][n] will have all bits of n or greater significance be 1, all others 0
-        unsigned long long zMask = 0xffffffffffffffff;
+        pieceSet zMask = 0xffffffffffffffff;
         for (int i = 63; i >= 0; i--) {
             zeroMask[1][i] = ~zMask;
             zMask ^= singleMask[i];
@@ -192,7 +192,7 @@ BitBoard::BitBoard() {
 
         //Pawn captures:
         //0th index is for white pawns, 1st index is for black pawns
-        unsigned long long pawnCapture = 0x0;
+        pieceSet pawnCapture = 0x0;
         
         for (int i = 0; i < 64; i++) {  
             pawnCapture = 0x0;
@@ -397,8 +397,8 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
 
     //We need to allocate room for bitboards equal to the number of
     //set bits in all attacksets
-    unsigned long long occupied = BitBoard::color[0] | BitBoard::color[1];
-    unsigned long long rev_occupied = bitswap(occupied);
+    pieceSet occupied = BitBoard::color[0] | BitBoard::color[1];
+    pieceSet rev_occupied = bitswap(occupied);
     
     int oppositeColor = !((bool)(color));
 
@@ -411,7 +411,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     }
 
     //Array of all attack set generation functions, excepting pawnpushes
-    unsigned long long (BitBoard::*pieceAttacks[6])(unsigned long long, unsigned long long, int, int);
+    pieceSet (BitBoard::*pieceAttacks[6])(pieceSet, pieceSet, int, int);
     pieceAttacks[0] = &BitBoard::pawnCaptures;
     pieceAttacks[1] = &BitBoard::rookMoves;
     pieceAttacks[2] = &BitBoard::knightMoves;
@@ -421,18 +421,18 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
 
     int index = 0;
     *moves = 0;
-    unsigned long long* attackSets;
+    pieceSet* attackSets;
     int* indices;
     int* pieceTypes;
 
     //arrays of attacks, square indexes, and index of the piece of each piece on the board
     //increment *moves by each set bit of each attackset
-    attackSets = new unsigned long long[pieceCount];
+    attackSets = new pieceSet[pieceCount];
     indices = new int[pieceCount];
     pieceTypes = new int[pieceCount];
 
-    unsigned long long pieceIterator;
-    unsigned long long att;
+    pieceSet pieceIterator;
+    pieceSet att;
 
     for (int i = 0; i < 6; i++) {
         pieceIterator = BitBoard::pieces[i][color];
@@ -451,7 +451,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     }
     //moves does not currently contain pawnpushes, which are calculated
     //simultaneously for all pawns, so we now add those.
-    unsigned long long pawnMoves = pawnPushes(occupied, color);
+    pieceSet pawnMoves = pawnPushes(occupied, color);
     int pushes = getNumPieces(pawnMoves);
     *moves += pushes;
     BitBoard* childBoards = (BitBoard*)malloc(*moves * (sizeof(BitBoard)));
@@ -466,13 +466,13 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
             pieceIterator -= singleMask[dest_square];
             BitBoard child(*this);
 
-            unsigned long long move = BitBoard::pieces[pieceTypes[i]][color];
-            unsigned long long col = BitBoard::color[color];
+            pieceSet move = BitBoard::pieces[pieceTypes[i]][color];
+            pieceSet col = BitBoard::color[color];
             move ^= singleMask[indices[i]];
             move ^= singleMask[dest_square];
             col ^= singleMask[indices[i]];
             col ^= singleMask[dest_square];
-            unsigned long long tempOpp;
+            pieceSet tempOpp;
             //loop through opposite pieces and subtract collisions for
             //captures
             for (int p = 0; p < 6; p++) {
@@ -497,8 +497,8 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
         int dest_square = getHighestSquare(pieceIterator);
         pieceIterator -= singleMask[dest_square];
         
-        unsigned long long move = BitBoard::pieces[0][color];
-        unsigned long long col = BitBoard::color[color];
+        pieceSet move = BitBoard::pieces[0][color];
+        pieceSet col = BitBoard::color[color];
         move ^= singleMask[dest_square];
         col ^= singleMask[dest_square];
 
@@ -533,7 +533,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     return childBoards;
 }
 
-unsigned long long BitBoard::byteswap(unsigned long long in) {
+pieceSet BitBoard::byteswap(pieceSet in) {
     //Reverses bits in long by swapping each
     //bit with its neighbor, then swapping neighbors, and so on
     
@@ -547,7 +547,7 @@ unsigned long long BitBoard::byteswap(unsigned long long in) {
     return in;
 }
 
-unsigned long long BitBoard::bitswap(unsigned long long in) {
+pieceSet BitBoard::bitswap(pieceSet in) {
     in = (((in & 0xaaaaaaaaaaaaaaaa) >> 1) | ((in & 0x5555555555555555) << 1));
     in = (((in & 0xcccccccccccccccc) >> 2) | ((in & 0x3333333333333333) << 2));
     in = (((in & 0xf0f0f0f0f0f0f0f0) >> 4) | ((in & 0x0f0f0f0f0f0f0f0f) << 4));
@@ -560,11 +560,11 @@ unsigned long long BitBoard::bitswap(unsigned long long in) {
     return in;
 }
 
-unsigned long long BitBoard::rookMoves(unsigned long long occ, unsigned long long rev_occ, int square, int color) {
-    unsigned long long rookAttacks = 0x0;
-    unsigned long long slider = BitBoard::color[color] & singleMask[square];
-    unsigned long long rev_slider = bitswap(slider);
-    unsigned long long up, down;
+pieceSet BitBoard::rookMoves(pieceSet occ, pieceSet rev_occ, int square, int color) {
+    pieceSet rookAttacks = 0x0;
+    pieceSet slider = BitBoard::color[color] & singleMask[square];
+    pieceSet rev_slider = bitswap(slider);
+    pieceSet up, down;
     //these are positive and negative horizontal "ray" attacks,
     //which begin from squares adjacent to the rook and 
     //stop at the square of another piece
@@ -591,11 +591,11 @@ unsigned long long BitBoard::rookMoves(unsigned long long occ, unsigned long lon
     return rookAttacks;
 }
 
-unsigned long long BitBoard::bishopMoves(unsigned long long occ, unsigned long long rev_occ, int square, int color) {
-    unsigned long long bishopAttacks = 0x0;
-    unsigned long long slider = BitBoard::color[color] & singleMask[square];
-    unsigned long long rev_slider = byteswap(slider);
-    unsigned long long up, down;
+pieceSet BitBoard::bishopMoves(pieceSet occ, pieceSet rev_occ, int square, int color) {
+    pieceSet bishopAttacks = 0x0;
+    pieceSet slider = BitBoard::color[color] & singleMask[square];
+    pieceSet rev_slider = byteswap(slider);
+    pieceSet up, down;
     //Bishop moves are union of diagonal and antidiagonal attacks
     //Each of these are done in the same way vertical attacks are done
     //Diagonal:
@@ -623,10 +623,10 @@ unsigned long long BitBoard::bishopMoves(unsigned long long occ, unsigned long l
     return bishopAttacks;
 }
 
-unsigned long long BitBoard::queenMoves(unsigned long long occ, unsigned long long rev_occ, int square, int color) {
+pieceSet BitBoard::queenMoves(pieceSet occ, pieceSet rev_occ, int square, int color) {
     //Where queen attacks are simply the union of rook and 
     //bishop attacks
-    unsigned long long queenAttacks = 0x0;
+    pieceSet queenAttacks = 0x0;
 
 
     queenAttacks = queenAttacks ^ bishopMoves(occ, rev_occ, square, color);
@@ -634,75 +634,75 @@ unsigned long long BitBoard::queenMoves(unsigned long long occ, unsigned long lo
     return queenAttacks;
 }
 
-unsigned long long BitBoard::knightMoves(unsigned long long occ, 
-        unsigned long long rev_occ, int square, int color) {
-    unsigned long long knightAttacks = knightMask[square];
+pieceSet BitBoard::knightMoves(pieceSet occ, 
+        pieceSet rev_occ, int square, int color) {
+    pieceSet knightAttacks = knightMask[square];
     //Now just remove self captures by XOR'ing out common bits between 
     //The set of pieces of the same color and the squares the knight attacks
     knightAttacks ^= (knightAttacks & BitBoard::color[color]); 
     return knightAttacks;
 }
 
-unsigned long long BitBoard::getDiagonalMask(int square) {
+pieceSet BitBoard::getDiagonalMask(int square) {
     return diagonalMask[square];
 }
 
-unsigned long long BitBoard::getAntiDiagonalMask(int sq) {
+pieceSet BitBoard::getAntiDiagonalMask(int sq) {
     return antidiagonalMask[sq];
 }
 
-unsigned long long BitBoard::getKnightMask(int sq) {
+pieceSet BitBoard::getKnightMask(int sq) {
     return knightMask[sq];
 }
 
-unsigned long long BitBoard::pawnPushes(unsigned long long occ, int color) {
+pieceSet BitBoard::pawnPushes(pieceSet occ, int color) {
     //pawn movement in general is the union of pushes and captures
     //pushes are either by two squares or one, so we calculate both possibilities
-    unsigned long long empty_squares = ~(occ);
-    unsigned long long singlepushes;
-    unsigned long long doublepushes;
+    pieceSet empty_squares = ~(occ);
+    pieceSet singlepushes;
+    pieceSet doublepushes;
     if (color == 0) { //white
         //empty squares immediately ahead of the pawn
         singlepushes = (BitBoard::pieces[0][0] << 8) & empty_squares; 
         //double pushes:
-        const unsigned long long rank4 = 0x00000000FF000000;
+        const pieceSet rank4 = 0x00000000FF000000;
         doublepushes = (singlepushes << 8) & empty_squares & rank4;
         return singlepushes | doublepushes;
     } 
     //black
     singlepushes = (BitBoard::pieces[0][1] >> 8) & empty_squares; 
-    const unsigned long long rank5 = 0x000000FF00000000;
+    const pieceSet rank5 = 0x000000FF00000000;
     doublepushes = (singlepushes >> 8) & empty_squares & rank5;
     return singlepushes | doublepushes;
 
 }
-unsigned long long BitBoard::pawnCaptures(unsigned long long occ, 
-        unsigned long long rev_occ, int square, int color) {
+pieceSet BitBoard::pawnCaptures(pieceSet occ, 
+        pieceSet rev_occ, int square, int color) {
     //Look up square in pawn capture lookup table and bitwise and
     //the result with the set of occupied squares of the opposite color
-    unsigned long long captureMask = pawnCaptureMask[color][square];
+    pieceSet captureMask = pawnCaptureMask[color][square];
     return captureMask & BitBoard::color[!((bool)(color))]; 
 }
 
-unsigned long long BitBoard::kingMoves(unsigned long long occ, 
-        unsigned long long rev_occ, int square, int color) {
+pieceSet BitBoard::kingMoves(pieceSet occ, 
+        pieceSet rev_occ, int square, int color) {
     //Does not include castling
-    unsigned long long kingAttacks = kingMask[square];
+    pieceSet kingAttacks = kingMask[square];
     //remove self captures:
     kingAttacks ^= (kingAttacks & BitBoard::color[color]); 
     return kingAttacks;
 }
 
-int BitBoard::getHighestSquare(unsigned long long attackSet) {
+int BitBoard::getHighestSquare(pieceSet attackSet) {
     
     //used for iterating over squares of an attack set
     return log2(attackSet);
 }
-int BitBoard::getLowestSquare(unsigned long long attackSet) {
+int BitBoard::getLowestSquare(pieceSet attackSet) {
     //given 0b10001, returns 0, for the index of the least significant set bit
     return log2(attackSet & -attackSet);
 }
-int BitBoard::getNumPieces(unsigned long long pieceSet) {
+int BitBoard::getNumPieces(pieceSet pieceSet) {
     //returns number of set bits by Kernighan's algorithm
     int count;
     for (count = 0; pieceSet; count++) {
@@ -711,7 +711,7 @@ int BitBoard::getNumPieces(unsigned long long pieceSet) {
     return count;
 }
 
-unsigned long long BitBoard::diagonalPins(unsigned long long occ, unsigned long long rev_occ, int color) {
+pieceSet BitBoard::diagonalPins(pieceSet occ, pieceSet rev_occ, int color) {
     /**
      * @brief returns set of pinned pieces on the diagonal
      * 
@@ -723,27 +723,27 @@ unsigned long long BitBoard::diagonalPins(unsigned long long occ, unsigned long 
     int king = getHighestSquare(BitBoard::pieces[5][color]);
     int oppCol = (int)(!(bool)(color));
 
-    unsigned long long posPinner = diagonalMask[king] & (zeroMask[1][king] | singleMask[king]);
-    unsigned long long negPinner = diagonalMask[king] & (zeroMask[0][king] | singleMask[king]);
+    pieceSet posPinner = diagonalMask[king] & (zeroMask[1][king] | singleMask[king]);
+    pieceSet negPinner = diagonalMask[king] & (zeroMask[0][king] | singleMask[king]);
     posPinner &= (BitBoard::pieces[3][oppCol] | BitBoard::pieces[4][oppCol]);
     negPinner &= (BitBoard::pieces[3][oppCol] | BitBoard::pieces[4][oppCol]);
     if (posPinner == 0 && negPinner == 0) {return 0;}
     
-    unsigned long long posxRay = 0;
-    unsigned long long negxRay = 0;
-    unsigned long long posAtt = 0;
-    unsigned long long negAtt = 0;
+    pieceSet posxRay = 0;
+    pieceSet negxRay = 0;
+    pieceSet posAtt = 0;
+    pieceSet negAtt = 0;
     if (posPinner) {
         int posPinnerSq = getLowestSquare(posPinner);
         posAtt = bishopMoves(occ, rev_occ, posPinnerSq, oppCol) & diagonalMask[king];
-        unsigned long long posBloc = BitBoard::color[color] & posAtt;
+        pieceSet posBloc = BitBoard::color[color] & posAtt;
         posxRay = posAtt ^ (bishopMoves(occ ^ posBloc, rev_occ, posPinnerSq, oppCol) & diagonalMask[king]);
 
     }
     if (negPinner) {
         int negPinnerSq = getHighestSquare(negPinner);
         negAtt = bishopMoves(occ, rev_occ, negPinnerSq, oppCol) & diagonalMask[king];
-        unsigned long long negBloc = BitBoard::color[color] & negAtt;
+        pieceSet negBloc = BitBoard::color[color] & negAtt;
         negxRay = negAtt ^ (bishopMoves(occ ^ negBloc, rev_occ, negPinnerSq, oppCol) & diagonalMask[king]);
 
     }

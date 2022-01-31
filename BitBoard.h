@@ -3,66 +3,78 @@
 
 #include <string>
 
+typedef unsigned long long pieceSet;
 class BitBoard {
     public:
+        /**
+         * @brief Construct a new Bit Board object with default FEN
+         * 
+         */
         BitBoard();
+        /**
+         * @brief Construct a new Bit Board object
+         * 
+         * @param copy 
+         */
         BitBoard(BitBoard &copy);
+        /**
+         * @brief Construct a new Bit Board object from board FEN
+         * does not handle side to move, castling rights, turn number
+         * 
+         * @param fen 
+         */
         BitBoard(std::string fen);
+        /**
+         * @brief return array of legal child positions
+         * 
+         * @param color 
+         * @param moves 
+         * @return BitBoard* 
+         */
         BitBoard* getLegalBoards(int color, int* moves);
-        static unsigned long long byteswap(unsigned long long in);
-        static unsigned long long bitswap(unsigned long long in);
-        unsigned long long getDiagonalMask(int sq);
-        unsigned long long getAntiDiagonalMask(int sq);
-        unsigned long long getKnightMask(int sq);
         
-        //public only for testing:
-        unsigned long long rookMoves(unsigned long long, 
-            unsigned long long, int , int );
+        static pieceSet byteswap(pieceSet in);
+        static pieceSet bitswap(pieceSet in);
         
-        unsigned long long bishopMoves(unsigned long long, 
-            unsigned long long rev_occ, int square, int color);
-
-        unsigned long long queenMoves(unsigned long long occ, 
-            unsigned long long rev_occ, int square, int color);
-
-        unsigned long long knightMoves(unsigned long long occ, 
-            unsigned long long rev_occ, int square, int color);
+        pieceSet getDiagonalMask(int sq);
+        pieceSet getAntiDiagonalMask(int sq);
+        pieceSet getKnightMask(int sq);
         
-        unsigned long long pawnPushes(unsigned long long occ, int color);
         
-        unsigned long long pawnCaptures(unsigned long long occ, 
-            unsigned long long rev_occ, int square, int color);
-
-        unsigned long long kingMoves(unsigned long long occ, 
-            unsigned long long rev_occ, int square, int color);
-
-
-        unsigned long long diagonalPins(unsigned long long occ, 
-            unsigned long long rev_occ, int color);
-
+        
         std::string fen();
 
-        unsigned long long color[2]; //color[0] is white, color[1] is black
-        unsigned long long pieces[6][2];
-        int getHighestSquare(unsigned long long attackSet);
-        int getLowestSquare(unsigned long long attackSet);
-        int getNumPieces(unsigned long long pieceSet);
+        pieceSet color[2]; //color[0] is white, color[1] is black
+        pieceSet pieces[6][2];
+        
 
     private:
         
         /*
-        unsigned long long bishop[2];
-        unsigned long long knight[2];
-        unsigned long long rook[2];
-        unsigned long long queen[2];
-        unsigned long long king[2];
-        unsigned long long pawn[2];
+        pieceSet bishop[2];
+        pieceSet knight[2];
+        pieceSet rook[2];
+        pieceSet queen[2];
+        pieceSet king[2];
+        pieceSet pawn[2];
         */
        //pawn, rook, knight, bishop, queen, king
 
-        
-        
+        pieceSet rookMoves(pieceSet, pieceSet, int , int );
+        pieceSet bishopMoves(pieceSet, pieceSet rev_occ, int square, int color);
+        pieceSet queenMoves(pieceSet occ, pieceSet rev_occ, int square, int color);
+        pieceSet knightMoves(pieceSet occ, pieceSet rev_occ, int square, int color);
+        pieceSet pawnCaptures(pieceSet occ, pieceSet rev_occ, int square, int color);
+        pieceSet kingMoves(pieceSet occ, pieceSet rev_occ, int square, int color);
 
+        pieceSet pawnPushes(pieceSet occ, int color);
+
+        pieceSet diagonalPins(pieceSet occ, pieceSet rev_occ, int color);
+
+        
+        int getHighestSquare(pieceSet attackSet);
+        int getLowestSquare(pieceSet attackSet);
+        int getNumPieces(pieceSet pieceSet);
         
 
         
