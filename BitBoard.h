@@ -64,17 +64,17 @@ class BitBoard {
         pieceSet bishopMoves(pieceSet, pieceSet rev_occ, int square, int color);
         pieceSet queenMoves(pieceSet occ, pieceSet rev_occ, int square, int color);
         pieceSet knightMoves(pieceSet occ, pieceSet rev_occ, int square, int color);
-        pieceSet pawnCaptures(pieceSet occ, pieceSet rev_occ, int square, int color);
         pieceSet kingMoves(pieceSet occ, pieceSet rev_occ, int square, int color);
-
+        pieceSet pawnCaptures(pieceSet occ, pieceSet rev_occ, int square, int color);
         pieceSet pawnPushes(pieceSet occ, int color);
 
-        pieceSet diagonalPins(pieceSet occ, pieceSet rev_occ, int color);
-
+        pieceSet diagonalPins(pieceSet occ, pieceSet rev_occ, int color, pieceSet* mask);
+        pieceSet cardinalPins(pieceSet occ, pieceSet rev_occ, int color, pieceSet* mask);
         
-        int getHighestSquare(pieceSet attackSet);
-        int getLowestSquare(pieceSet attackSet);
-        int getNumPieces(pieceSet pieceSet);
+        
+        int getHighestSquare(pieceSet set);
+        int getLowestSquare(pieceSet set);
+        int getNumPieces(pieceSet set);
         
 
         
