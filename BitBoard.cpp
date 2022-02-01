@@ -71,6 +71,9 @@ BitBoard::BitBoard() {
                 diagonalMask[square] = dmask;
                 square += 9;
             }
+            if (i == 0) {
+                break;
+            }
             dmask = dmask >> 1;
             dmask += singleMask[dIndex];
             dIndex += 8;
@@ -83,6 +86,9 @@ BitBoard::BitBoard() {
             for (int j = 8; j > i; j--) {
                 diagonalMask[square] = dmask;
                 square += 9;
+            }
+            if (i == 1) {
+                break;
             }
             dmask = dmask >> 8;
             dmask += singleMask[dIndex];
@@ -98,6 +104,9 @@ BitBoard::BitBoard() {
                 antidiagonalMask[square] = admask;
                 square += 7;
             }
+            if (i == 7) {
+                break;
+            }
             admask = admask << 1;
             admask += singleMask[adIndex];
             adIndex += 8;
@@ -110,6 +119,9 @@ BitBoard::BitBoard() {
             for (int j = i; j >= 0; j--) {
                 antidiagonalMask[square] = admask;
                 square -= 7;
+            }
+            if (i == 6) {
+                break;
             }
             admask = admask >> 1;
             admask += singleMask[adIndex];
