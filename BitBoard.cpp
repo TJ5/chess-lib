@@ -2,6 +2,7 @@
 #include <cmath>
 #include <string>
 
+#define SELFCAPTURE 0xffffffffffffffff
 
 static pieceSet singleMask[64]; 
 static pieceSet verticalMask[64];
@@ -411,7 +412,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     }
 
     //Array of all attack set generation functions, excepting pawnpushes
-    pieceSet (BitBoard::*pieceAttacks[6])(pieceSet, pieceSet, int, int);
+    pieceSet (BitBoard::*pieceAttacks[6])(pieceSet, pieceSet, int, int, pieceSet);
     pieceAttacks[0] = &BitBoard::pawnCaptures;
     pieceAttacks[1] = &BitBoard::rookMoves;
     pieceAttacks[2] = &BitBoard::knightMoves;
@@ -445,7 +446,7 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
         for (int j = 0; j < numPieces[i]; j++) {
             int square = getHighestSquare(pieceIterator);
             pieceIterator -= singleMask[square];
-            att = (*this.*pieceAttacks[i])(occupied, rev_occupied, square, color);
+            att = (*this.*pieceAttacks[i])(occupied, rev_occupied, square, color, SELFCAPTURE);
             if (singleMask[square] & dPins) {
                 att &= diagonalMask[square];
             }
@@ -575,7 +576,7 @@ pieceSet BitBoard::bitswap(pieceSet in) {
     return in;
 }
 
-pieceSet BitBoard::rookMoves(pieceSet occ, pieceSet rev_occ, int square, int color) {
+pieceSet BitBoard::rookMoves(pieceSet occ, pieceSet rev_occ, int square, int color, pieceSet modifier) {
     pieceSet rookAttacks = 0x0;
     pieceSet slider = BitBoard::color[color] & singleMask[square];
     pieceSet rev_slider = bitswap(slider);
@@ -590,8 +591,9 @@ pieceSet BitBoard::rookMoves(pieceSet occ, pieceSet rev_occ, int square, int col
     //repeat in reverse for ray attacks to the left
     rookAttacks = ((occ - (slider << 1)) ^ bitswap(rev_occ - (rev_slider << 1)));
     //Now, remove pieces of the same color as self captures are illegal
+    //ONLY if modifier is 0xffffffffffffff
     rookAttacks &= horizontalMask[square]; //bound to row
-    rookAttacks ^= (horizontalMask[square] & BitBoard::color[color] & rookAttacks);
+    rookAttacks ^= (horizontalMask[square] & BitBoard::color[color] & rookAttacks & modifier);
     
     //Vertical attacks:
     up = (occ & verticalMask[square]) - slider;
@@ -602,11 +604,11 @@ pieceSet BitBoard::rookMoves(pieceSet occ, pieceSet rev_occ, int square, int col
     up = up & verticalMask[square];
     rookAttacks = rookAttacks ^ up;
     //remove self captures
-    rookAttacks = rookAttacks ^ (verticalMask[square] & BitBoard::color[color] & rookAttacks);
+    rookAttacks ^= (verticalMask[square] & BitBoard::color[color] & rookAttacks & modifier);
     return rookAttacks;
 }
 
-pieceSet BitBoard::bishopMoves(pieceSet occ, pieceSet rev_occ, int square, int color) {
+pieceSet BitBoard::bishopMoves(pieceSet occ, pieceSet rev_occ, int square, int color, pieceSet modifier) {
     pieceSet bishopAttacks = 0x0;
     pieceSet slider = BitBoard::color[color] & singleMask[square];
     pieceSet rev_slider = byteswap(slider);
@@ -622,7 +624,7 @@ pieceSet BitBoard::bishopMoves(pieceSet occ, pieceSet rev_occ, int square, int c
     bishopAttacks = bishopAttacks ^ (up & diagonalMask[square]);
     
     //Remove self captures:
-    bishopAttacks = bishopAttacks ^ (diagonalMask[square] & BitBoard::color[color] & bishopAttacks);
+    bishopAttacks = bishopAttacks ^ (diagonalMask[square] & BitBoard::color[color] & bishopAttacks & modifier);
     
     //Antidiagonal:
     up = (occ & antidiagonalMask[square]) - slider;
@@ -633,28 +635,27 @@ pieceSet BitBoard::bishopMoves(pieceSet occ, pieceSet rev_occ, int square, int c
     bishopAttacks = bishopAttacks ^ (up & antidiagonalMask[square]);
     
     //Remove self captures:
-    bishopAttacks = bishopAttacks ^ (antidiagonalMask[square] & BitBoard::color[color] & bishopAttacks);
+    bishopAttacks = bishopAttacks ^ (antidiagonalMask[square] & BitBoard::color[color] & bishopAttacks & modifier);
     
     return bishopAttacks;
 }
 
-pieceSet BitBoard::queenMoves(pieceSet occ, pieceSet rev_occ, int square, int color) {
+pieceSet BitBoard::queenMoves(pieceSet occ, pieceSet rev_occ, int square, int color, pieceSet modifier) {
     //Where queen attacks are simply the union of rook and 
     //bishop attacks
     pieceSet queenAttacks = 0x0;
 
 
-    queenAttacks = queenAttacks ^ bishopMoves(occ, rev_occ, square, color);
-    queenAttacks = queenAttacks ^ rookMoves(occ, rev_occ, square, color);
+    queenAttacks ^= bishopMoves(occ, rev_occ, square, color, modifier);
+    queenAttacks ^= rookMoves(occ, rev_occ, square, color, modifier);
     return queenAttacks;
 }
 
-pieceSet BitBoard::knightMoves(pieceSet occ, 
-        pieceSet rev_occ, int square, int color) {
+pieceSet BitBoard::knightMoves(pieceSet occ, pieceSet rev_occ, int square, int color, pieceSet modifier) {
     pieceSet knightAttacks = knightMask[square];
     //Now just remove self captures by XOR'ing out common bits between 
     //The set of pieces of the same color and the squares the knight attacks
-    knightAttacks ^= (knightAttacks & BitBoard::color[color]); 
+    knightAttacks ^= (knightAttacks & BitBoard::color[color] & modifier); 
     return knightAttacks;
 }
 
@@ -691,20 +692,20 @@ pieceSet BitBoard::pawnPushes(pieceSet occ, int color) {
     return singlepushes | doublepushes;
 
 }
-pieceSet BitBoard::pawnCaptures(pieceSet occ, 
-        pieceSet rev_occ, int square, int color) {
+pieceSet BitBoard::pawnCaptures(pieceSet occ, pieceSet rev_occ, int square, int color, pieceSet modifier) {
     //Look up square in pawn capture lookup table and bitwise and
     //the result with the set of occupied squares of the opposite color
+
+    //other parameters not strictly needed but included to have an array of function pointers in getlegalboards()
     pieceSet captureMask = pawnCaptureMask[color][square];
     return captureMask & BitBoard::color[!((bool)(color))]; 
 }
 
-pieceSet BitBoard::kingMoves(pieceSet occ, 
-        pieceSet rev_occ, int square, int color) {
+pieceSet BitBoard::kingMoves(pieceSet occ, pieceSet rev_occ, int square, int color, pieceSet modifier) {
     //Does not include castling
     pieceSet kingAttacks = kingMask[square];
     //remove self captures:
-    kingAttacks ^= (kingAttacks & BitBoard::color[color]); 
+    kingAttacks ^= (kingAttacks & BitBoard::color[color] & modifier); 
     return kingAttacks;
 }
 
@@ -750,16 +751,16 @@ pieceSet BitBoard::diagonalPins(pieceSet occ, pieceSet rev_occ, int color, piece
     pieceSet negAtt = 0;
     if (posPinner) {
         int posPinnerSq = getLowestSquare(posPinner);
-        posAtt = bishopMoves(occ, rev_occ, posPinnerSq, oppCol) & mask[king];
+        posAtt = bishopMoves(occ, rev_occ, posPinnerSq, oppCol, SELFCAPTURE) & mask[king];
         pieceSet posBloc = BitBoard::color[color] & posAtt;
-        posxRay = posAtt ^ (bishopMoves(occ ^ posBloc, rev_occ, posPinnerSq, oppCol) & mask[king]);
+        posxRay = posAtt ^ (bishopMoves(occ ^ posBloc, rev_occ, posPinnerSq, oppCol, SELFCAPTURE) & mask[king]);
 
     }
     if (negPinner) {
         int negPinnerSq = getHighestSquare(negPinner);
-        negAtt = bishopMoves(occ, rev_occ, negPinnerSq, oppCol) & mask[king];
+        negAtt = bishopMoves(occ, rev_occ, negPinnerSq, oppCol, SELFCAPTURE) & mask[king];
         pieceSet negBloc = BitBoard::color[color] & negAtt;
-        negxRay = negAtt ^ (bishopMoves(occ ^ negBloc, rev_occ, negPinnerSq, oppCol) & mask[king]);
+        negxRay = negAtt ^ (bishopMoves(occ ^ negBloc, rev_occ, negPinnerSq, oppCol, SELFCAPTURE) & mask[king]);
 
     }
 
@@ -785,16 +786,16 @@ pieceSet BitBoard::cardinalPins(pieceSet occ, pieceSet rev_occ, int color, piece
     pieceSet negAtt = 0;
     if (posPinner) {
         int posPinnerSq = getLowestSquare(posPinner);
-        posAtt = rookMoves(occ, rev_occ, posPinnerSq, oppCol) & mask[king];
+        posAtt = rookMoves(occ, rev_occ, posPinnerSq, oppCol, SELFCAPTURE) & mask[king];
         pieceSet posBloc = BitBoard::color[color] & posAtt;
-        posxRay = posAtt ^ (rookMoves(occ ^ posBloc, rev_occ, posPinnerSq, oppCol) & mask[king]);
+        posxRay = posAtt ^ (rookMoves(occ ^ posBloc, rev_occ, posPinnerSq, oppCol, SELFCAPTURE) & mask[king]);
 
     }
     if (negPinner) {
         int negPinnerSq = getHighestSquare(negPinner);
-        negAtt = rookMoves(occ, rev_occ, negPinnerSq, oppCol) & mask[king];
+        negAtt = rookMoves(occ, rev_occ, negPinnerSq, oppCol, SELFCAPTURE) & mask[king];
         pieceSet negBloc = BitBoard::color[color] & negAtt;
-        negxRay = negAtt ^ (rookMoves(occ ^ negBloc, rev_occ, negPinnerSq, oppCol) & mask[king]);
+        negxRay = negAtt ^ (rookMoves(occ ^ negBloc, rev_occ, negPinnerSq, oppCol, SELFCAPTURE) & mask[king]);
 
     }
 

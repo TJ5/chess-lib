@@ -60,12 +60,12 @@ class BitBoard {
         */
        //pawn, rook, knight, bishop, queen, king
 
-        pieceSet rookMoves(pieceSet, pieceSet, int , int );
-        pieceSet bishopMoves(pieceSet, pieceSet rev_occ, int square, int color);
-        pieceSet queenMoves(pieceSet occ, pieceSet rev_occ, int square, int color);
-        pieceSet knightMoves(pieceSet occ, pieceSet rev_occ, int square, int color);
-        pieceSet kingMoves(pieceSet occ, pieceSet rev_occ, int square, int color);
-        pieceSet pawnCaptures(pieceSet occ, pieceSet rev_occ, int square, int color);
+        pieceSet rookMoves(pieceSet, pieceSet, int , int, pieceSet modifier );
+        pieceSet bishopMoves(pieceSet, pieceSet rev_occ, int square, int color, pieceSet modifier);
+        pieceSet queenMoves(pieceSet occ, pieceSet rev_occ, int square, int color, pieceSet modifier);
+        pieceSet knightMoves(pieceSet occ, pieceSet rev_occ, int square, int color, pieceSet modifier);
+        pieceSet kingMoves(pieceSet occ, pieceSet rev_occ, int square, int color, pieceSet modifier);
+        pieceSet pawnCaptures(pieceSet occ, pieceSet rev_occ, int square, int color, pieceSet modifier);
         pieceSet pawnPushes(pieceSet occ, int color);
 
         pieceSet diagonalPins(pieceSet occ, pieceSet rev_occ, int color, pieceSet* mask);
