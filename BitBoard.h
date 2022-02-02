@@ -71,6 +71,7 @@ class BitBoard {
         pieceSet diagonalPins(pieceSet occ, pieceSet rev_occ, int color, pieceSet* mask);
         pieceSet cardinalPins(pieceSet occ, pieceSet rev_occ, int color, pieceSet* mask);
         
+        pieceSet controlledSquares(pieceSet occ, pieceSet rev_occ, int color);
         
         int getHighestSquare(pieceSet set);
         int getLowestSquare(pieceSet set);

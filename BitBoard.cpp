@@ -727,29 +727,7 @@ pieceSet BitBoard::kingMoves(pieceSet occ, pieceSet rev_occ, int square, int col
     //The king cannot move into any square controlled by opponent pieces
 
     int oppCol = (int)(!(bool)(color));
-    
-
-    pieceSet (BitBoard::*pieceAttacks[6])(pieceSet, pieceSet, int, int, pieceSet);
-    pieceAttacks[0] = &BitBoard::pawnCaptures;
-    pieceAttacks[1] = &BitBoard::rookMoves;
-    pieceAttacks[2] = &BitBoard::knightMoves;
-    pieceAttacks[3] = &BitBoard::bishopMoves;
-    pieceAttacks[4] = &BitBoard::queenMoves;
-    pieceAttacks[5] = &BitBoard::kingMoves;
-
-    pieceSet opponentControl = 0;
-    pieceSet pieceIterator;
-    for(int i = 0; i < 6; i++) {
-        pieceIterator = BitBoard::pieces[i][oppCol];
-        for (int j = 0; j < getNumPieces(BitBoard::pieces[i][oppCol]); j++) {
-            int square = getHighestSquare(pieceIterator);
-            pieceIterator -= singleMask[square];
-            opponentControl |= (*this.*pieceAttacks[i])(occ, rev_occ, square, oppCol, 0);
-
-        }
-    }
-
-    kingAttacks &= ~opponentControl;
+    kingAttacks &= ~controlledSquares(occ, rev_occ, oppCol);
 
     return kingAttacks;
 }
@@ -905,4 +883,27 @@ std::string BitBoard::fen() {
     }
 
     return fen;
+}
+
+pieceSet BitBoard::controlledSquares(pieceSet occ, pieceSet rev_occ, int color) {
+    pieceSet (BitBoard::*pieceAttacks[6])(pieceSet, pieceSet, int, int, pieceSet);
+    pieceAttacks[0] = &BitBoard::pawnCaptures;
+    pieceAttacks[1] = &BitBoard::rookMoves;
+    pieceAttacks[2] = &BitBoard::knightMoves;
+    pieceAttacks[3] = &BitBoard::bishopMoves;
+    pieceAttacks[4] = &BitBoard::queenMoves;
+    pieceAttacks[5] = &BitBoard::kingMoves;
+
+    pieceSet control = 0;
+    pieceSet pieceIterator;
+    for(int i = 0; i < 6; i++) {
+        pieceIterator = BitBoard::pieces[i][color];
+        for (int j = 0; j < getNumPieces(BitBoard::pieces[i][color]); j++) {
+            int square = getHighestSquare(pieceIterator);
+            pieceIterator -= singleMask[square];
+            control |= (*this.*pieceAttacks[i])(occ, rev_occ, square, color, 0);
+
+        }
+    }
+    return control;
 }
