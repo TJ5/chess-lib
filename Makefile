@@ -3,6 +3,7 @@ CPPFLAGS = -Wall -g
 
 all: bin/.dirstamp bin/main
 
+tests: bin/tests
 
 bin/.dirstamp:
 	mkdir -p bin
@@ -14,6 +15,9 @@ bin/main: bin/BitBoard.o
 bin/BitBoard.o:
 	$(CXX) $(CPPFLAGS) -c BitBoard.cpp -o bin/BitBoard.o  
 
-.PHONY: clean
+bin/tests: ./tests/tests.cc
+	$(CXX) -std=c++20 -g -Wall $^ -o $@
+
+.PHONY: clean tests
 clean:
 	rm -rf bin
