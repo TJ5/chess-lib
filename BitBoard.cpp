@@ -416,6 +416,11 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
     
     int oppositeColor = !((bool)(color));
 
+    pieceSet opponentControl = controlledSquares(occupied, rev_occupied, oppositeColor);
+    bool isCheck = false;
+    if (BitBoard::pieces[5][color] & opponentControl) {
+        isCheck = true;
+    }
     
     int numPieces[6];
     int pieceCount = 0;
@@ -512,7 +517,12 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
             child.pieces[pieceTypes[i]][color] = move;
             child.color[color] = col;
             child.color[oppositeColor] -= (child.color[oppositeColor] & child.color[color]);
-
+            if (isCheck) {
+                if (child.controlledSquares(child.color[0] | child.color[1], bitswap(child.color[0] | child.color[1]), oppositeColor) & child.pieces[5][color]) {
+                    (*moves)--;
+                    continue;
+                }
+            }
             childBoards[m++] = child;
             
 
@@ -549,6 +559,13 @@ BitBoard* BitBoard::getLegalBoards(int color, int* moves) {
 
         child.pieces[0][color] = move;
         child.color[color] = col;
+        if (isCheck) {
+            if (child.controlledSquares(child.color[0] | child.color[1], bitswap(child.color[0] | child.color[1]), oppositeColor) & child.pieces[5][color]) {
+                (*moves)--;
+                continue;
+            }
+        }
+        
         childBoards[m++] = child;
     }
     
